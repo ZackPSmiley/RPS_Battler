@@ -1,0 +1,21 @@
+; Engine configuration file.
+; Godot 4.x — open this folder in the Godot editor to run.
+
+config_version=5
+
+[application]
+
+config/name="RPS Battler"
+config/description="Jam-scoped RPS arena prototype"
+run/main_scene="res://main_menu.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=1152
+window/size/viewport_height=648
+window/stretch/mode="canvas_items"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
