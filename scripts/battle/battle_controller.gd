@@ -1,13 +1,18 @@
-## Match flow only — all display goes through BattleUI.
+## Match flow only — all display and feedback go through BattleUI.
 extends Control
+
+enum BattleState {
+	INPUT_OPEN,
+	ROUND_RESOLVING,
+	MATCH_OVER,
+}
 
 @onready var ui: BattleUI = $UILayer
 
+var _state: BattleState = BattleState.INPUT_OPEN
 var _player: FighterData
 var _enemy: FighterData
 var _enemy_ai: EnemyAI
-## When false, ignore move_chosen (match over or resolving).
-var _accepting_round_input: bool = true
 
 
 func _ready() -> void:
@@ -23,7 +28,7 @@ func _ready() -> void:
 
 
 func start_match() -> void:
-	_accepting_round_input = true
+	_state = BattleState.INPUT_OPEN
 	_player.reset_for_match()
 	_enemy.reset_for_match()
 	ui.reset_match_ui()
@@ -47,24 +52,42 @@ static func _damage_for_streak(streak: int) -> int:
 			return 22 if streak >= 4 else 0
 
 
+static func _win_flavor_suffix(winner_streak: int, player_won: bool) -> String:
+	if winner_streak <= 1:
+		return ""
+	if winner_streak == 2:
+		return " Building momentum."
+	if winner_streak == 3:
+		return " Momentum rising!"
+	if winner_streak >= 4:
+		return " Finisher pressure!" if player_won else " Brutal streak!"
+	return ""
+
+
+static func _build_win_result_text(player_won: bool, damage: int, winner_streak: int) -> String:
+	var line: String = (
+		"You win! %d damage dealt." % damage
+		if player_won
+		else "Enemy wins! %d damage dealt." % damage
+	)
+	return line + _win_flavor_suffix(winner_streak, player_won)
+
+
 func _on_move_chosen(player_move: RoundResolver.Move) -> void:
-	if not _accepting_round_input:
+	if _state != BattleState.INPUT_OPEN:
 		return
-	# Block re-entry until this round is fully resolved (stops double-click races).
-	_accepting_round_input = false
+	_state = BattleState.ROUND_RESOLVING
 
 	var enemy_move: RoundResolver.Move = _enemy_ai.pick_move()
 	var outcome: RoundResolver.Outcome = RoundResolver.resolve(player_move, enemy_move)
 
-	ui.show_moves(
-		RoundResolver.move_to_string(player_move),
-		RoundResolver.move_to_string(enemy_move)
-	)
+	var p_str: String = RoundResolver.move_to_string(player_move)
+	var e_str: String = RoundResolver.move_to_string(enemy_move)
 
 	if outcome == RoundResolver.Outcome.DRAW:
-		ui.show_result("Draw! No damage.")
+		ui.show_round_resolution(p_str, e_str, "Draw! No damage.")
 		_sync_ui_to_state()
-		_accepting_round_input = true
+		_state = BattleState.INPUT_OPEN
 		return
 
 	if outcome == RoundResolver.Outcome.PLAYER_WIN:
@@ -72,13 +95,17 @@ func _on_move_chosen(player_move: RoundResolver.Move) -> void:
 		_enemy.streak = 0
 		var damage: int = _damage_for_streak(_player.streak)
 		_enemy.apply_damage(damage)
-		ui.show_result("You win! %d damage dealt." % damage)
+		ui.show_round_resolution(p_str, e_str, _build_win_result_text(true, damage, _player.streak))
+		ui.flash_enemy_hit(damage)
+		ui.pulse_streak_label(true)
 	elif outcome == RoundResolver.Outcome.ENEMY_WIN:
 		_enemy.streak += 1
 		_player.streak = 0
 		var damage: int = _damage_for_streak(_enemy.streak)
 		_player.apply_damage(damage)
-		ui.show_result("Enemy wins! %d damage dealt." % damage)
+		ui.show_round_resolution(p_str, e_str, _build_win_result_text(false, damage, _enemy.streak))
+		ui.flash_player_hit(damage)
+		ui.pulse_streak_label(false)
 
 	_sync_ui_to_state()
 
@@ -87,11 +114,11 @@ func _on_move_chosen(player_move: RoundResolver.Move) -> void:
 	elif _enemy.is_defeated():
 		_finish_match(true)
 	else:
-		_accepting_round_input = true
+		_state = BattleState.INPUT_OPEN
 
 
 func _finish_match(player_won: bool) -> void:
-	_accepting_round_input = false
+	_state = BattleState.MATCH_OVER
 	ui.show_end_screen(player_won)
 
 

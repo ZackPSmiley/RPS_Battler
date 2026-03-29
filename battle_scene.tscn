@@ -51,10 +51,18 @@ layout_mode = 2
 text = "YOU"
 horizontal_alignment = 1
 
-[node name="PlayerBody" type="ColorRect" parent="UILayer/Margin/VBox/FighterRow/PlayerSide"]
+[node name="PlayerFighterRoot" type="Control" parent="UILayer/Margin/VBox/FighterRow/PlayerSide"]
 custom_minimum_size = Vector2(120, 160)
 layout_mode = 2
 size_flags_horizontal = 4
+
+[node name="PlayerBody" type="ColorRect" parent="UILayer/Margin/VBox/FighterRow/PlayerSide/PlayerFighterRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 color = Color(0.2, 0.55, 0.95, 1)
 
 [node name="EnemySide" type="VBoxContainer" parent="UILayer/Margin/VBox/FighterRow"]
@@ -66,10 +74,18 @@ layout_mode = 2
 text = "ENEMY"
 horizontal_alignment = 1
 
-[node name="EnemyBody" type="ColorRect" parent="UILayer/Margin/VBox/FighterRow/EnemySide"]
+[node name="EnemyFighterRoot" type="Control" parent="UILayer/Margin/VBox/FighterRow/EnemySide"]
 custom_minimum_size = Vector2(120, 160)
 layout_mode = 2
 size_flags_horizontal = 4
+
+[node name="EnemyBody" type="ColorRect" parent="UILayer/Margin/VBox/FighterRow/EnemySide/EnemyFighterRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 color = Color(0.85, 0.35, 0.3, 1)
 
 [node name="HPLabels" type="HBoxContainer" parent="UILayer/Margin/VBox"]
