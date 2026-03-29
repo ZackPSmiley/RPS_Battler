@@ -1,0 +1,158 @@
+[gd_scene load_steps=3 format=3 uid="uid://b8battlescene01"]
+
+[ext_resource type="Script" path="res://scripts/battle/battle_controller.gd" id="1_bc"]
+[ext_resource type="Script" path="res://scripts/ui/battle_ui.gd" id="2_ui"]
+
+[node name="BattleScene" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_bc")
+
+[node name="UILayer" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_ui")
+
+[node name="Margin" type="MarginContainer" parent="UILayer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="UILayer/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="FighterRow" type="HBoxContainer" parent="UILayer/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 32
+
+[node name="PlayerSide" type="VBoxContainer" parent="UILayer/Margin/VBox/FighterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PlayerTag" type="Label" parent="UILayer/Margin/VBox/FighterRow/PlayerSide"]
+layout_mode = 2
+text = "YOU"
+horizontal_alignment = 1
+
+[node name="PlayerBody" type="ColorRect" parent="UILayer/Margin/VBox/FighterRow/PlayerSide"]
+custom_minimum_size = Vector2(120, 160)
+layout_mode = 2
+size_flags_horizontal = 4
+color = Color(0.2, 0.55, 0.95, 1)
+
+[node name="EnemySide" type="VBoxContainer" parent="UILayer/Margin/VBox/FighterRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EnemyTag" type="Label" parent="UILayer/Margin/VBox/FighterRow/EnemySide"]
+layout_mode = 2
+text = "ENEMY"
+horizontal_alignment = 1
+
+[node name="EnemyBody" type="ColorRect" parent="UILayer/Margin/VBox/FighterRow/EnemySide"]
+custom_minimum_size = Vector2(120, 160)
+layout_mode = 2
+size_flags_horizontal = 4
+color = Color(0.85, 0.35, 0.3, 1)
+
+[node name="HPLabels" type="HBoxContainer" parent="UILayer/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 48
+
+[node name="PlayerHPLabel" type="Label" parent="UILayer/Margin/VBox/HPLabels"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Player HP: 100"
+
+[node name="EnemyHPLabel" type="Label" parent="UILayer/Margin/VBox/HPLabels"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Enemy HP: 100"
+horizontal_alignment = 2
+
+[node name="StreakLabels" type="HBoxContainer" parent="UILayer/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 48
+
+[node name="PlayerStreakLabel" type="Label" parent="UILayer/Margin/VBox/StreakLabels"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Player streak: 0"
+
+[node name="EnemyStreakLabel" type="Label" parent="UILayer/Margin/VBox/StreakLabels"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Enemy streak: 0"
+horizontal_alignment = 2
+
+[node name="PlayerMoveLabel" type="Label" parent="UILayer/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Your move: —"
+
+[node name="EnemyMoveLabel" type="Label" parent="UILayer/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Enemy move: —"
+
+[node name="RoundResultLabel" type="Label" parent="UILayer/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Pick Rock, Paper, or Scissors."
+
+[node name="MatchEndLabel" type="Label" parent="UILayer/Margin/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = ""
+horizontal_alignment = 1
+
+[node name="ChoiceRow" type="HBoxContainer" parent="UILayer/Margin/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="RockButton" type="Button" parent="UILayer/Margin/VBox/ChoiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Rock"
+
+[node name="PaperButton" type="Button" parent="UILayer/Margin/VBox/ChoiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Paper"
+
+[node name="ScissorsButton" type="Button" parent="UILayer/Margin/VBox/ChoiceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Scissors"
+
+[node name="RestartButton" type="Button" parent="UILayer/Margin/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Restart"
+horizontal_alignment = 1
