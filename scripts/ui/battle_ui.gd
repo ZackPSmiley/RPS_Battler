@@ -5,18 +5,18 @@ extends Control
 signal move_chosen(move: RoundResolver.Move)
 signal restart_requested
 
-@onready var player_hp_label: Label = %PlayerHPLabel
-@onready var enemy_hp_label: Label = %EnemyHPLabel
-@onready var player_streak_label: Label = %PlayerStreakLabel
-@onready var enemy_streak_label: Label = %EnemyStreakLabel
-@onready var player_move_label: Label = %PlayerMoveLabel
-@onready var enemy_move_label: Label = %EnemyMoveLabel
-@onready var round_result_label: Label = %RoundResultLabel
-@onready var match_end_label: Label = %MatchEndLabel
-@onready var rock_button: Button = %RockButton
-@onready var paper_button: Button = %PaperButton
-@onready var scissors_button: Button = %ScissorsButton
-@onready var restart_button: Button = %RestartButton
+@onready var player_hp_label: Label = $Margin/VBox/HPLabels/PlayerHPLabel
+@onready var enemy_hp_label: Label = $Margin/VBox/HPLabels/EnemyHPLabel
+@onready var player_streak_label: Label = $Margin/VBox/StreakLabels/PlayerStreakLabel
+@onready var enemy_streak_label: Label = $Margin/VBox/StreakLabels/EnemyStreakLabel
+@onready var player_move_label: Label = $Margin/VBox/PlayerMoveLabel
+@onready var enemy_move_label: Label = $Margin/VBox/EnemyMoveLabel
+@onready var round_result_label: Label = $Margin/VBox/RoundResultLabel
+@onready var match_end_label: Label = $Margin/VBox/MatchEndLabel
+@onready var rock_button: Button = $Margin/VBox/ChoiceRow/RockButton
+@onready var paper_button: Button = $Margin/VBox/ChoiceRow/PaperButton
+@onready var scissors_button: Button = $Margin/VBox/ChoiceRow/ScissorsButton
+@onready var restart_button: Button = $Margin/VBox/RestartButton
 
 
 func _ready() -> void:
