@@ -14,7 +14,8 @@ func reset_for_match() -> void:
 
 
 func apply_damage(amount: int) -> void:
-	current_hp = maxi(0, current_hp - amount)
+	var dmg: int = maxi(0, amount)
+	current_hp = maxi(0, current_hp - dmg)
 
 
 func is_defeated() -> bool:
