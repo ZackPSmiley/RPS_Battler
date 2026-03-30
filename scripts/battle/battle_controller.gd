@@ -1,6 +1,9 @@
 ## Match flow only — all display and feedback go through BattleUI.
 extends Control
 
+## Set false to silence [Battle] prints (jam / shipping).
+const DEBUG_BATTLE_FLOW := true
+
 enum BattleState {
 	INPUT_OPEN,
 	ROUND_RESOLVING,
@@ -27,12 +30,45 @@ func _ready() -> void:
 	start_match()
 
 
+func _battle_state_name() -> String:
+	match _state:
+		BattleState.INPUT_OPEN:
+			return "INPUT_OPEN"
+		BattleState.ROUND_RESOLVING:
+			return "ROUND_RESOLVING"
+		BattleState.MATCH_OVER:
+			return "MATCH_OVER"
+	return "?"
+
+
+func _debug_state(tag: String) -> void:
+	if not DEBUG_BATTLE_FLOW:
+		return
+	print(
+		"[Battle] ",
+		tag,
+		" | state=",
+		_battle_state_name(),
+		" pHP=",
+		_player.current_hp,
+		" eHP=",
+		_enemy.current_hp,
+		" pStr=",
+		_player.streak,
+		" eStr=",
+		_enemy.streak
+	)
+
+
 func start_match() -> void:
+	if DEBUG_BATTLE_FLOW:
+		print("[Battle] restart / start_match")
 	_state = BattleState.INPUT_OPEN
 	_player.reset_for_match()
 	_enemy.reset_for_match()
 	ui.reset_match_ui()
 	_sync_ui_to_state()
+	_debug_state("after start_match")
 
 
 func _sync_ui_to_state() -> void:
@@ -78,9 +114,16 @@ static func _build_win_result_text(player_won: bool, damage: int, winner_streak:
 
 
 func _on_move_chosen(player_move: RoundResolver.Move) -> void:
+	if DEBUG_BATTLE_FLOW:
+		print("[Battle] move chosen: ", RoundResolver.move_to_string(player_move))
 	if _state != BattleState.INPUT_OPEN:
+		if DEBUG_BATTLE_FLOW:
+			print("[Battle] ignored move (state not INPUT_OPEN)")
 		return
 	_state = BattleState.ROUND_RESOLVING
+	if DEBUG_BATTLE_FLOW:
+		print("[Battle] state -> ROUND_RESOLVING")
+	_debug_state("ROUND_RESOLVING")
 
 	var enemy_move: RoundResolver.Move = _enemy_ai.pick_move()
 	var outcome: RoundResolver.Outcome = RoundResolver.resolve(player_move, enemy_move)
@@ -92,6 +135,9 @@ func _on_move_chosen(player_move: RoundResolver.Move) -> void:
 		ui.show_round_resolution(p_str, e_str, "Draw! No damage.")
 		_sync_ui_to_state()
 		_state = BattleState.INPUT_OPEN
+		if DEBUG_BATTLE_FLOW:
+			print("[Battle] draw -> state INPUT_OPEN")
+		_debug_state("after draw")
 		return
 
 	if outcome == RoundResolver.Outcome.PLAYER_WIN:
@@ -101,7 +147,11 @@ func _on_move_chosen(player_move: RoundResolver.Move) -> void:
 		_enemy.apply_damage(damage)
 		ui.show_round_resolution(p_str, e_str, _build_win_result_text(true, damage, _player.streak))
 		if damage >= 15:
+			if DEBUG_BATTLE_FLOW:
+				print("[Battle] entering brief_hit_pause (damage=", damage, ")")
 			await ui.brief_hit_pause()
+			if DEBUG_BATTLE_FLOW:
+				print("[Battle] resumed after brief_hit_pause")
 		ui.flash_enemy_hit(_hit_feedback_strength(damage), damage)
 		ui.pulse_player_streak(_player.streak)
 	elif outcome == RoundResolver.Outcome.ENEMY_WIN:
@@ -111,24 +161,40 @@ func _on_move_chosen(player_move: RoundResolver.Move) -> void:
 		_player.apply_damage(damage)
 		ui.show_round_resolution(p_str, e_str, _build_win_result_text(false, damage, _enemy.streak))
 		if damage >= 15:
+			if DEBUG_BATTLE_FLOW:
+				print("[Battle] entering brief_hit_pause (damage=", damage, ")")
 			await ui.brief_hit_pause()
+			if DEBUG_BATTLE_FLOW:
+				print("[Battle] resumed after brief_hit_pause")
 		ui.flash_player_hit(_hit_feedback_strength(damage), damage)
 		ui.pulse_enemy_streak(_enemy.streak)
 
 	_sync_ui_to_state()
 
 	if _player.is_defeated():
+		if DEBUG_BATTLE_FLOW:
+			print("[Battle] KO check: player defeated")
 		_finish_match(false)
 	elif _enemy.is_defeated():
+		if DEBUG_BATTLE_FLOW:
+			print("[Battle] KO check: enemy defeated")
 		_finish_match(true)
 	else:
 		_state = BattleState.INPUT_OPEN
+		if DEBUG_BATTLE_FLOW:
+			print("[Battle] state -> INPUT_OPEN (round complete)")
+		_debug_state("after round")
 
 
 func _finish_match(player_won: bool) -> void:
 	_state = BattleState.MATCH_OVER
+	if DEBUG_BATTLE_FLOW:
+		print("[Battle] match finish | player_won=", player_won, " -> MATCH_OVER")
+	_debug_state("MATCH_OVER")
 	ui.show_end_screen(player_won)
 
 
 func _on_restart_requested() -> void:
+	if DEBUG_BATTLE_FLOW:
+		print("[Battle] restart requested")
 	start_match()

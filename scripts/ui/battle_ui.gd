@@ -216,7 +216,9 @@ func reset_match_ui() -> void:
 func brief_hit_pause() -> void:
 	var prev: float = Engine.time_scale
 	Engine.time_scale = 0.0
-	await get_tree().create_timer(0.038, true, true).timeout
+	# With time_scale == 0, SceneTreeTimer must use ignore_time_scale or it never advances (await hangs).
+	# Godot 4.4+: create_timer(sec, process_always, process_in_physics, ignore_time_scale)
+	await get_tree().create_timer(0.038, true, false, true).timeout
 	Engine.time_scale = prev
 
 
