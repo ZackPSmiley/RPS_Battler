@@ -35,8 +35,8 @@ var _enemy_root_rest: Vector2 = Vector2.ZERO
 var _result_label_rest_scale: Vector2
 var _result_label_rest_modulate: Color = Color.WHITE
 
-var _player_hit_tween: Tween = null
-var _enemy_hit_tween: Tween = null
+## One tween drives both fighter roots + defender body for a single strike (avoids half-finished tweens).
+var _strike_pair_tween: Tween = null
 var _result_line_tween: Tween = null
 var _player_streak_tween: Tween = null
 var _enemy_streak_tween: Tween = null
@@ -162,8 +162,7 @@ func set_controls_locked(locked: bool) -> void:
 
 func reset_visual_state() -> void:
 	Engine.time_scale = 1.0
-	_kill_player_hit_tween()
-	_kill_enemy_hit_tween()
+	_kill_strike_pair_tween()
 	_kill_result_line_tween()
 	_kill_player_streak_tween()
 	_kill_enemy_streak_tween()
@@ -215,54 +214,62 @@ func brief_hit_pause() -> void:
 
 
 func flash_player_hit(strength: float = 1.0, damage: int = 0) -> void:
-	_play_hit_feedback(player_body, player_fighter_root, _player_base_color, strength, -1.0, true)
-	play_hit_sfx(damage >= 15)
+	# Enemy attacked; player is defender (recoils left, enemy lunges right-from-enemy-side = toward center).
+	_play_strike_exchange(false, strength, damage)
 
 
 func flash_enemy_hit(strength: float = 1.0, damage: int = 0) -> void:
-	_play_hit_feedback(enemy_body, enemy_fighter_root, _enemy_base_color, strength, 1.0, false)
+	# Player attacked; enemy is defender (recoils right, player lunges toward center).
+	_play_strike_exchange(true, strength, damage)
+
+
+func _play_strike_exchange(player_is_attacker: bool, strength: float, damage: int) -> void:
+	_kill_strike_pair_tween()
+	var s: float = clampf(strength, 0.2, 1.5)
+	# Defender moves more than attacker; keeps motion in a small pixel band.
+	var lunge_px: float = 4.0 * s
+	var recoil_px: float = 6.8 * s
+	var tw := create_tween()
+	if player_is_attacker:
+		var flash := _enemy_base_color.lerp(Color(1.0, 1.0, 1.0), 0.45 + 0.35 * s)
+		var squash := Vector2(1.0 + 0.05 * s, 1.0 - 0.04 * s)
+		tw.set_parallel(true)
+		tw.tween_property(player_fighter_root, "position", _player_root_rest + Vector2(lunge_px, 0.0), 0.05)
+		tw.tween_property(enemy_fighter_root, "position", _enemy_root_rest + Vector2(recoil_px, 0.0), 0.05)
+		tw.tween_property(enemy_body, "color", flash, 0.04 * s)
+		tw.tween_property(enemy_body, "scale", squash, 0.05)
+		tw.tween_property(enemy_body, "rotation_degrees", 3.5 * s, 0.05)
+		tw.chain()
+		tw.set_parallel(true)
+		tw.tween_property(player_fighter_root, "position", _player_root_rest, 0.1)
+		tw.tween_property(enemy_fighter_root, "position", _enemy_root_rest, 0.1)
+		tw.tween_property(enemy_body, "color", _enemy_base_color, 0.1 + 0.05 * s)
+		tw.tween_property(enemy_body, "scale", Vector2.ONE, 0.1)
+		tw.tween_property(enemy_body, "rotation_degrees", 0.0, 0.1)
+	else:
+		var flash := _player_base_color.lerp(Color(1.0, 1.0, 1.0), 0.45 + 0.35 * s)
+		var squash := Vector2(1.0 + 0.05 * s, 1.0 - 0.04 * s)
+		tw.set_parallel(true)
+		tw.tween_property(enemy_fighter_root, "position", _enemy_root_rest + Vector2(-lunge_px, 0.0), 0.05)
+		tw.tween_property(player_fighter_root, "position", _player_root_rest + Vector2(-recoil_px, 0.0), 0.05)
+		tw.tween_property(player_body, "color", flash, 0.04 * s)
+		tw.tween_property(player_body, "scale", squash, 0.05)
+		tw.tween_property(player_body, "rotation_degrees", -3.5 * s, 0.05)
+		tw.chain()
+		tw.set_parallel(true)
+		tw.tween_property(enemy_fighter_root, "position", _enemy_root_rest, 0.1)
+		tw.tween_property(player_fighter_root, "position", _player_root_rest, 0.1)
+		tw.tween_property(player_body, "color", _player_base_color, 0.1 + 0.05 * s)
+		tw.tween_property(player_body, "scale", Vector2.ONE, 0.1)
+		tw.tween_property(player_body, "rotation_degrees", 0.0, 0.1)
+	_strike_pair_tween = tw
 	play_hit_sfx(damage >= 15)
 
 
-func _play_hit_feedback(body: ColorRect, root: Control, base_color: Color, strength: float, recoil_sign: float, is_player_side: bool) -> void:
-	if is_player_side:
-		_kill_player_hit_tween()
-	else:
-		_kill_enemy_hit_tween()
-	var s: float = clampf(strength, 0.2, 1.5)
-	var flash := base_color.lerp(Color(1.0, 1.0, 1.0), 0.45 + 0.35 * s)
-	var squash := Vector2(1.0 + 0.05 * s, 1.0 - 0.04 * s)
-	var root_nudge: float = 5.0 * recoil_sign * s
-	var tilt: float = 3.5 * -recoil_sign * s
-	var rest_root: Vector2 = _player_root_rest if is_player_side else _enemy_root_rest
-	var tw := create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(body, "color", flash, 0.04 * s)
-	tw.tween_property(body, "scale", squash, 0.05)
-	tw.tween_property(body, "rotation_degrees", tilt, 0.05)
-	tw.tween_property(root, "position", rest_root + Vector2(root_nudge, 0.0), 0.05)
-	tw.chain()
-	tw.set_parallel(true)
-	tw.tween_property(body, "color", base_color, 0.1 + 0.05 * s)
-	tw.tween_property(body, "scale", Vector2.ONE, 0.1)
-	tw.tween_property(body, "rotation_degrees", 0.0, 0.1)
-	tw.tween_property(root, "position", rest_root, 0.1)
-	if is_player_side:
-		_player_hit_tween = tw
-	else:
-		_enemy_hit_tween = tw
-
-
-func _kill_player_hit_tween() -> void:
-	if _player_hit_tween != null and is_instance_valid(_player_hit_tween):
-		_player_hit_tween.kill()
-	_player_hit_tween = null
-
-
-func _kill_enemy_hit_tween() -> void:
-	if _enemy_hit_tween != null and is_instance_valid(_enemy_hit_tween):
-		_enemy_hit_tween.kill()
-	_enemy_hit_tween = null
+func _kill_strike_pair_tween() -> void:
+	if _strike_pair_tween != null and is_instance_valid(_strike_pair_tween):
+		_strike_pair_tween.kill()
+	_strike_pair_tween = null
 
 
 func _pulse_round_result_line() -> void:
