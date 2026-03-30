@@ -1,4 +1,4 @@
-## All battle HUD updates, feedback, and input signals.
+## Presentation + input: controller calls these methods only (no direct node grabs elsewhere).
 class_name BattleUI
 extends Control
 
@@ -18,8 +18,7 @@ signal restart_requested
 @onready var scissors_button: Button = $Margin/VBox/ChoiceRow/ScissorsButton
 @onready var restart_button: Button = $Margin/VBox/RestartButton
 
-@onready var player_fighter_root: Control = $Margin/VBox/FighterRow/PlayerSide/PlayerFighterRoot
-@onready var enemy_fighter_root: Control = $Margin/VBox/FighterRow/EnemySide/EnemyFighterRoot
+## Placeholder fighter ColorRects (hit feedback runs on these nodes).
 @onready var player_body: ColorRect = $Margin/VBox/FighterRow/PlayerSide/PlayerFighterRoot/PlayerBody
 @onready var enemy_body: ColorRect = $Margin/VBox/FighterRow/EnemySide/EnemyFighterRoot/EnemyBody
 
@@ -32,19 +31,15 @@ var _streak_pulse_tween: Tween = null
 func _ready() -> void:
 	_player_base_color = player_body.color
 	_enemy_base_color = enemy_body.color
-	player_fighter_root.pivot_offset = player_fighter_root.size / 2.0
-	enemy_fighter_root.pivot_offset = enemy_fighter_root.size / 2.0
-	player_fighter_root.resized.connect(_on_player_fighter_resized)
-	enemy_fighter_root.resized.connect(_on_enemy_fighter_resized)
+	_refresh_body_pivots()
+	player_body.resized.connect(_refresh_body_pivots)
+	enemy_body.resized.connect(_refresh_body_pivots)
 	_connect_buttons()
 
 
-func _on_player_fighter_resized() -> void:
-	player_fighter_root.pivot_offset = player_fighter_root.size / 2.0
-
-
-func _on_enemy_fighter_resized() -> void:
-	enemy_fighter_root.pivot_offset = enemy_fighter_root.size / 2.0
+func _refresh_body_pivots() -> void:
+	player_body.pivot_offset = player_body.size / 2.0
+	enemy_body.pivot_offset = enemy_body.size / 2.0
 
 
 func _connect_buttons() -> void:
@@ -89,7 +84,6 @@ func show_result(text: String) -> void:
 	round_result_label.text = text
 
 
-## Single place to refresh move lines + round copy after a resolve.
 func show_round_resolution(player_move: String, enemy_move: String, result_text: String) -> void:
 	show_moves(player_move, enemy_move)
 	show_result(result_text)
@@ -117,19 +111,22 @@ func set_controls_locked(locked: bool) -> void:
 func reset_visual_state() -> void:
 	_kill_fighter_tween()
 	_kill_streak_tween()
-	player_fighter_root.scale = Vector2.ONE
-	enemy_fighter_root.scale = Vector2.ONE
-	player_fighter_root.rotation_degrees = 0.0
-	enemy_fighter_root.rotation_degrees = 0.0
+	player_body.scale = Vector2.ONE
+	enemy_body.scale = Vector2.ONE
+	player_body.position = Vector2.ZERO
+	enemy_body.position = Vector2.ZERO
+	player_body.rotation_degrees = 0.0
+	enemy_body.rotation_degrees = 0.0
 	player_body.color = _player_base_color
 	enemy_body.color = _enemy_base_color
+	player_body.modulate = Color.WHITE
+	enemy_body.modulate = Color.WHITE
 	player_streak_label.modulate = Color.WHITE
 	enemy_streak_label.modulate = Color.WHITE
 	player_streak_label.scale = Vector2.ONE
 	enemy_streak_label.scale = Vector2.ONE
 
 
-## Full UI reset at match start: visuals, labels, end chrome, input unlocked.
 func reset_match_ui() -> void:
 	reset_visual_state()
 	hide_end_screen()
@@ -137,33 +134,31 @@ func reset_match_ui() -> void:
 	set_controls_locked(false)
 
 
-func flash_player_hit(damage: int) -> void:
-	_play_hit_feedback(player_body, player_fighter_root, _player_base_color, damage, 1.0)
+## strength 0.35–1.0 typical; controller derives from damage.
+func flash_player_hit(strength: float = 1.0) -> void:
+	_play_body_hit_feedback(player_body, _player_base_color, strength, 1.0)
 
 
-func flash_enemy_hit(damage: int) -> void:
-	_play_hit_feedback(enemy_body, enemy_fighter_root, _enemy_base_color, damage, -1.0)
+func flash_enemy_hit(strength: float = 1.0) -> void:
+	_play_body_hit_feedback(enemy_body, _enemy_base_color, strength, -1.0)
 
 
-func _feedback_strength(damage: int) -> float:
-	return clampf(float(damage) / 22.0, 0.35, 1.0)
-
-
-func _play_hit_feedback(body: ColorRect, root: Control, base_color: Color, damage: int, nudge_dir: float) -> void:
+func _play_body_hit_feedback(body: ColorRect, base_color: Color, strength: float, recoil_dir: float) -> void:
 	_kill_fighter_tween()
-	var strength := _feedback_strength(damage)
-	var flash_color := base_color.lerp(Color(1.0, 0.45, 0.35), 0.65 + 0.2 * strength)
-	var punch := 1.0 + 0.04 + 0.06 * strength
+	var s: float = clampf(strength, 0.2, 1.5)
+	var flash := base_color.lerp(Color(1.0, 1.0, 1.0), 0.45 + 0.35 * s)
+	var squash := Vector2(1.0 + 0.05 * s, 1.0 - 0.04 * s)
+	var recoil_px: float = 10.0 * recoil_dir * s
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(body, "color", flash_color, 0.04 * strength)
-	tw.tween_property(root, "scale", Vector2(punch, punch), 0.05)
-	tw.tween_property(root, "rotation_degrees", 5.0 * nudge_dir * strength, 0.05)
+	tw.tween_property(body, "color", flash, 0.04 * s)
+	tw.tween_property(body, "scale", squash, 0.05)
+	tw.tween_property(body, "position", Vector2(recoil_px, 0.0), 0.05)
 	tw.chain()
 	tw.set_parallel(true)
-	tw.tween_property(body, "color", base_color, 0.11 + 0.05 * strength)
-	tw.tween_property(root, "scale", Vector2.ONE, 0.1)
-	tw.tween_property(root, "rotation_degrees", 0.0, 0.1)
+	tw.tween_property(body, "color", base_color, 0.1 + 0.05 * s)
+	tw.tween_property(body, "scale", Vector2.ONE, 0.1)
+	tw.tween_property(body, "position", Vector2.ZERO, 0.1)
 	_fighter_feedback_tween = tw
 
 
@@ -173,17 +168,28 @@ func _kill_fighter_tween() -> void:
 	_fighter_feedback_tween = null
 
 
-func pulse_streak_label(is_player: bool) -> void:
+## Pass current winner streak so 3+ can pulse harder.
+func pulse_player_streak(streak_value: int = 1) -> void:
+	_pulse_streak_label(player_streak_label, streak_value)
+
+
+func pulse_enemy_streak(streak_value: int = 1) -> void:
+	_pulse_streak_label(enemy_streak_label, streak_value)
+
+
+func _pulse_streak_label(lbl: Label, streak_value: int) -> void:
 	_kill_streak_tween()
-	var lbl: Label = player_streak_label if is_player else enemy_streak_label
+	var dramatic: bool = streak_value >= 3
+	var peak_mod := Color(1.25, 1.2, 0.7) if dramatic else Color(1.2, 1.15, 0.75)
+	var peak_scale := Vector2(1.12, 1.12) if dramatic else Vector2(1.08, 1.08)
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(lbl, "modulate", Color(1.2, 1.15, 0.75), 0.07)
-	tw.tween_property(lbl, "scale", Vector2(1.08, 1.08), 0.08)
+	tw.tween_property(lbl, "modulate", peak_mod, 0.07)
+	tw.tween_property(lbl, "scale", peak_scale, 0.08)
 	tw.chain()
 	tw.set_parallel(true)
-	tw.tween_property(lbl, "modulate", Color.WHITE, 0.18)
-	tw.tween_property(lbl, "scale", Vector2.ONE, 0.14)
+	tw.tween_property(lbl, "modulate", Color.WHITE, 0.2 if dramatic else 0.18)
+	tw.tween_property(lbl, "scale", Vector2.ONE, 0.16 if dramatic else 0.14)
 	_streak_pulse_tween = tw
 
 

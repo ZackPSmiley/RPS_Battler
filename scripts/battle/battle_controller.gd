@@ -52,6 +52,10 @@ static func _damage_for_streak(streak: int) -> int:
 			return 22 if streak >= 4 else 0
 
 
+static func _hit_feedback_strength(damage: int) -> float:
+	return clampf(float(damage) / 22.0, 0.35, 1.0)
+
+
 static func _win_flavor_suffix(winner_streak: int, player_won: bool) -> String:
 	if winner_streak <= 1:
 		return ""
@@ -96,16 +100,16 @@ func _on_move_chosen(player_move: RoundResolver.Move) -> void:
 		var damage: int = _damage_for_streak(_player.streak)
 		_enemy.apply_damage(damage)
 		ui.show_round_resolution(p_str, e_str, _build_win_result_text(true, damage, _player.streak))
-		ui.flash_enemy_hit(damage)
-		ui.pulse_streak_label(true)
+		ui.flash_enemy_hit(_hit_feedback_strength(damage))
+		ui.pulse_player_streak(_player.streak)
 	elif outcome == RoundResolver.Outcome.ENEMY_WIN:
 		_enemy.streak += 1
 		_player.streak = 0
 		var damage: int = _damage_for_streak(_enemy.streak)
 		_player.apply_damage(damage)
 		ui.show_round_resolution(p_str, e_str, _build_win_result_text(false, damage, _enemy.streak))
-		ui.flash_player_hit(damage)
-		ui.pulse_streak_label(false)
+		ui.flash_player_hit(_hit_feedback_strength(damage))
+		ui.pulse_enemy_streak(_enemy.streak)
 
 	_sync_ui_to_state()
 
