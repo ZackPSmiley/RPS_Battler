@@ -21,6 +21,14 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_ui")
 
+[node name="ButtonSfx" type="AudioStreamPlayer" parent="UILayer"]
+
+[node name="HitSfx" type="AudioStreamPlayer" parent="UILayer"]
+
+[node name="BigHitSfx" type="AudioStreamPlayer" parent="UILayer"]
+
+[node name="WinSfx" type="AudioStreamPlayer" parent="UILayer"]
+
 [node name="Margin" type="MarginContainer" parent="UILayer"]
 layout_mode = 1
 anchors_preset = 15
