@@ -100,7 +100,7 @@ func _on_move_chosen(player_move: RoundResolver.Move) -> void:
 		var damage: int = _damage_for_streak(_player.streak)
 		_enemy.apply_damage(damage)
 		ui.show_round_resolution(p_str, e_str, _build_win_result_text(true, damage, _player.streak))
-		if damage >= 10:
+		if damage >= 15:
 			await ui.brief_hit_pause()
 		ui.flash_enemy_hit(_hit_feedback_strength(damage), damage)
 		ui.pulse_player_streak(_player.streak)
@@ -110,7 +110,7 @@ func _on_move_chosen(player_move: RoundResolver.Move) -> void:
 		var damage: int = _damage_for_streak(_enemy.streak)
 		_player.apply_damage(damage)
 		ui.show_round_resolution(p_str, e_str, _build_win_result_text(false, damage, _enemy.streak))
-		if damage >= 10:
+		if damage >= 15:
 			await ui.brief_hit_pause()
 		ui.flash_player_hit(_hit_feedback_strength(damage), damage)
 		ui.pulse_enemy_streak(_enemy.streak)

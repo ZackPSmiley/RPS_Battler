@@ -33,8 +33,10 @@ var _enemy_base_color: Color
 var _player_root_rest: Vector2 = Vector2.ZERO
 var _enemy_root_rest: Vector2 = Vector2.ZERO
 var _result_label_rest_scale: Vector2
+var _result_label_rest_modulate: Color = Color.WHITE
 
-var _fighter_feedback_tween: Tween = null
+var _player_hit_tween: Tween = null
+var _enemy_hit_tween: Tween = null
 var _result_line_tween: Tween = null
 var _player_streak_tween: Tween = null
 var _enemy_streak_tween: Tween = null
@@ -44,13 +46,15 @@ func _ready() -> void:
 	_player_base_color = player_body.color
 	_enemy_base_color = enemy_body.color
 	_result_label_rest_scale = round_result_label.scale
+	_result_label_rest_modulate = round_result_label.modulate
 	_refresh_body_pivots()
 	player_body.resized.connect(_refresh_body_pivots)
 	enemy_body.resized.connect(_refresh_body_pivots)
 	round_result_label.resized.connect(_on_result_label_resized)
 	_on_result_label_resized()
 	_connect_buttons()
-	call_deferred("_snapshot_fighter_roots")
+	await get_tree().process_frame
+	_snapshot_fighter_roots()
 
 
 func _snapshot_fighter_roots() -> void:
@@ -128,12 +132,12 @@ func show_moves(player_move: String, enemy_move: String) -> void:
 
 func show_result(text: String) -> void:
 	round_result_label.text = text
-	_pulse_round_result_line()
 
 
 func show_round_resolution(player_move: String, enemy_move: String, result_text: String) -> void:
 	show_moves(player_move, enemy_move)
 	show_result(result_text)
+	_pulse_round_result_line()
 
 
 func show_end_screen(player_won: bool) -> void:
@@ -158,12 +162,17 @@ func set_controls_locked(locked: bool) -> void:
 
 func reset_visual_state() -> void:
 	Engine.time_scale = 1.0
-	_kill_fighter_tween()
+	_kill_player_hit_tween()
+	_kill_enemy_hit_tween()
 	_kill_result_line_tween()
 	_kill_player_streak_tween()
 	_kill_enemy_streak_tween()
 	player_fighter_root.position = _player_root_rest
 	enemy_fighter_root.position = _enemy_root_rest
+	player_fighter_root.scale = Vector2.ONE
+	enemy_fighter_root.scale = Vector2.ONE
+	player_fighter_root.rotation_degrees = 0.0
+	enemy_fighter_root.rotation_degrees = 0.0
 	player_body.scale = Vector2.ONE
 	enemy_body.scale = Vector2.ONE
 	player_body.position = Vector2.ZERO
@@ -178,7 +187,7 @@ func reset_visual_state() -> void:
 	enemy_streak_label.modulate = Color.WHITE
 	player_streak_label.scale = Vector2.ONE
 	enemy_streak_label.scale = Vector2.ONE
-	round_result_label.modulate = Color.WHITE
+	round_result_label.modulate = _result_label_rest_modulate
 	round_result_label.scale = _result_label_rest_scale
 	if button_sfx.playing:
 		button_sfx.stop()
@@ -198,7 +207,6 @@ func reset_match_ui() -> void:
 	set_controls_locked(false)
 
 
-## Short freeze for heavier hits; timer ignores time_scale so we can restore cleanly.
 func brief_hit_pause() -> void:
 	var prev: float = Engine.time_scale
 	Engine.time_scale = 0.0
@@ -207,39 +215,54 @@ func brief_hit_pause() -> void:
 
 
 func flash_player_hit(strength: float = 1.0, damage: int = 0) -> void:
-	_play_hit_feedback(player_body, player_fighter_root, _player_base_color, strength, -1.0)
-	play_hit_sfx(damage >= 10)
+	_play_hit_feedback(player_body, player_fighter_root, _player_base_color, strength, -1.0, true)
+	play_hit_sfx(damage >= 15)
 
 
 func flash_enemy_hit(strength: float = 1.0, damage: int = 0) -> void:
-	_play_hit_feedback(enemy_body, enemy_fighter_root, _enemy_base_color, strength, 1.0)
-	play_hit_sfx(damage >= 10)
+	_play_hit_feedback(enemy_body, enemy_fighter_root, _enemy_base_color, strength, 1.0, false)
+	play_hit_sfx(damage >= 15)
 
 
-func _play_hit_feedback(body: ColorRect, root: Control, base_color: Color, strength: float, recoil_sign: float) -> void:
-	_kill_fighter_tween()
+func _play_hit_feedback(body: ColorRect, root: Control, base_color: Color, strength: float, recoil_sign: float, is_player_side: bool) -> void:
+	if is_player_side:
+		_kill_player_hit_tween()
+	else:
+		_kill_enemy_hit_tween()
 	var s: float = clampf(strength, 0.2, 1.5)
 	var flash := base_color.lerp(Color(1.0, 1.0, 1.0), 0.45 + 0.35 * s)
 	var squash := Vector2(1.0 + 0.05 * s, 1.0 - 0.04 * s)
 	var root_nudge: float = 5.0 * recoil_sign * s
-	var rest_root: Vector2 = _player_root_rest if root == player_fighter_root else _enemy_root_rest
+	var tilt: float = 3.5 * -recoil_sign * s
+	var rest_root: Vector2 = _player_root_rest if is_player_side else _enemy_root_rest
 	var tw := create_tween()
 	tw.set_parallel(true)
 	tw.tween_property(body, "color", flash, 0.04 * s)
 	tw.tween_property(body, "scale", squash, 0.05)
+	tw.tween_property(body, "rotation_degrees", tilt, 0.05)
 	tw.tween_property(root, "position", rest_root + Vector2(root_nudge, 0.0), 0.05)
 	tw.chain()
 	tw.set_parallel(true)
 	tw.tween_property(body, "color", base_color, 0.1 + 0.05 * s)
 	tw.tween_property(body, "scale", Vector2.ONE, 0.1)
+	tw.tween_property(body, "rotation_degrees", 0.0, 0.1)
 	tw.tween_property(root, "position", rest_root, 0.1)
-	_fighter_feedback_tween = tw
+	if is_player_side:
+		_player_hit_tween = tw
+	else:
+		_enemy_hit_tween = tw
 
 
-func _kill_fighter_tween() -> void:
-	if _fighter_feedback_tween != null and is_instance_valid(_fighter_feedback_tween):
-		_fighter_feedback_tween.kill()
-	_fighter_feedback_tween = null
+func _kill_player_hit_tween() -> void:
+	if _player_hit_tween != null and is_instance_valid(_player_hit_tween):
+		_player_hit_tween.kill()
+	_player_hit_tween = null
+
+
+func _kill_enemy_hit_tween() -> void:
+	if _enemy_hit_tween != null and is_instance_valid(_enemy_hit_tween):
+		_enemy_hit_tween.kill()
+	_enemy_hit_tween = null
 
 
 func _pulse_round_result_line() -> void:
@@ -251,7 +274,7 @@ func _pulse_round_result_line() -> void:
 	tw.chain()
 	tw.set_parallel(true)
 	tw.tween_property(round_result_label, "scale", _result_label_rest_scale, 0.12)
-	tw.tween_property(round_result_label, "modulate", Color.WHITE, 0.12)
+	tw.tween_property(round_result_label, "modulate", _result_label_rest_modulate, 0.12)
 	_result_line_tween = tw
 
 
