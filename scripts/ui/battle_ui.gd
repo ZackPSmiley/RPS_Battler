@@ -35,7 +35,8 @@ var _enemy_root_rest: Vector2 = Vector2.ZERO
 var _result_label_rest_scale: Vector2
 var _result_label_rest_modulate: Color = Color.WHITE
 
-## One tween drives both fighter roots + defender body for a single strike (avoids half-finished tweens).
+## Single tween for one strike: both roots + defender body move together (one exchange = one timeline).
+## Separate _player/_enemy streak tweens stay independent; strike is atomic so we do not split half-motion.
 var _strike_pair_tween: Tween = null
 var _result_line_tween: Tween = null
 var _player_streak_tween: Tween = null
@@ -55,6 +56,12 @@ func _ready() -> void:
 	_connect_buttons()
 	await get_tree().process_frame
 	_snapshot_fighter_roots()
+	get_viewport().size_changed.connect(_on_viewport_size_changed)
+
+
+func _on_viewport_size_changed() -> void:
+	# Layout may shift root offsets after resize; refresh rest so tweens and reset stay aligned.
+	call_deferred("_snapshot_fighter_roots")
 
 
 func _snapshot_fighter_roots() -> void:
